@@ -30,7 +30,7 @@ type QueryEngine struct {
 	isAggregateQuery    bool
 	aggregators         []Aggregator
 	duration            *time.Duration
-	timestampAggregator Aggregator
+	timestampAggregator *TimestampAggregator
 	groups              map[string]map[Group]bool
 	buckets             map[string]int64
 	pointsRange         map[string]*PointRange
@@ -571,26 +571,26 @@ func (self *QueryEngine) runAggregatesForTable(table string) {
 }
 
 func (self *QueryEngine) yieldValuesForTableAndGroups(table string, groups []Group) {
-
 	points := []*protocol.Point{}
 
 	query := self.query
 	var sortedGroups SortableGroups
+	var sortInterface sort.Interface
 	fillWithZero := self.duration != nil && query.GetGroupByClause().FillWithZero
 	if fillWithZero {
-		if query.Ascending {
-			sortedGroups = &AscendingGroupTimestampSortableGroups{CommonSortableGroups{groups, table}}
-		} else {
-			sortedGroups = &DescendingGroupTimestampSortableGroups{CommonSortableGroups{groups, table}}
+		sortedGroups = &AscendingGroupTimestampSortableGroups{CommonSortableGroups{groups, table}}
+		sortInterface = sortedGroups
+		if !query.Ascending {
+			sortInterface = sort.Reverse(sortInterface)
 		}
 	} else {
-		if self.query.Ascending {
-			sortedGroups = &AscendingAggregatorSortableGroups{CommonSortableGroups{groups, table}, self.timestampAggregator}
-		} else {
-			sortedGroups = &DescendingAggregatorSortableGroups{CommonSortableGroups{groups, table}, self.timestampAggregator}
+		sortedGroups = &AscendingAggregatorSortableGroups{CommonSortableGroups{groups, table}, self.timestampAggregator}
+		sortInterface = sortedGroups
+		if !self.query.Ascending {
+			sortInterface = sort.Reverse(sortInterface)
 		}
 	}
-	sort.Sort(sortedGroups)
+	sort.Sort(sortInterface)
 
 	for _, groupId := range sortedGroups.GetSortedGroups() {
 		var timestamp int64

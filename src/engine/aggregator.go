@@ -611,8 +611,15 @@ func (self *TimestampAggregator) ColumnNames() []string {
 }
 
 func (self *TimestampAggregator) GetValues(series string, group interface{}) [][]*protocol.FieldValue {
+	return self.GetValuesOptionalDelete(series, group, true)
+}
+
+func (self *TimestampAggregator) GetValuesOptionalDelete(series string, group interface{}, deleteValue bool) [][]*protocol.FieldValue {
 	returnValues := [][]*protocol.FieldValue{}
 	value := self.timestamps[series][group]
+	if deleteValue {
+		defer delete(self.timestamps[series], group)
+	}
 	returnValues = append(returnValues, []*protocol.FieldValue{
 		&protocol.FieldValue{Int64Value: &value},
 	})
@@ -622,7 +629,7 @@ func (self *TimestampAggregator) GetValues(series string, group interface{}) [][
 
 func (self *TimestampAggregator) InitializeFieldsMetadata(series *protocol.Series) error { return nil }
 
-func NewTimestampAggregator(query *parser.SelectQuery, _ *parser.Value) (Aggregator, error) {
+func NewTimestampAggregator(query *parser.SelectQuery, _ *parser.Value) (*TimestampAggregator, error) {
 	duration, err := query.GetGroupByClause().GetGroupByTime()
 	if err != nil {
 		return nil, err

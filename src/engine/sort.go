@@ -20,7 +20,7 @@ func (self *CommonSortableGroups) GetSortedGroups() []Group {
 
 type AscendingAggregatorSortableGroups struct {
 	CommonSortableGroups
-	aggregator Aggregator
+	aggregator *TimestampAggregator
 }
 
 func (self *CommonSortableGroups) Len() int {
@@ -32,20 +32,9 @@ func (self *CommonSortableGroups) Swap(i, j int) {
 }
 
 func (self *AscendingAggregatorSortableGroups) Less(i, j int) bool {
-	iTimestamp := self.aggregator.GetValues(self.table, self.data[i])[0][0].Int64Value
-	jTimestamp := self.aggregator.GetValues(self.table, self.data[j])[0][0].Int64Value
+	iTimestamp := self.aggregator.GetValuesOptionalDelete(self.table, self.data[i], false)[0][0].Int64Value
+	jTimestamp := self.aggregator.GetValuesOptionalDelete(self.table, self.data[j], false)[0][0].Int64Value
 	return *iTimestamp < *jTimestamp
-}
-
-type DescendingAggregatorSortableGroups struct {
-	CommonSortableGroups
-	aggregator Aggregator
-}
-
-func (self *DescendingAggregatorSortableGroups) Less(i, j int) bool {
-	iTimestamp := self.aggregator.GetValues(self.table, self.data[i])[0][0].Int64Value
-	jTimestamp := self.aggregator.GetValues(self.table, self.data[j])[0][0].Int64Value
-	return *iTimestamp > *jTimestamp
 }
 
 type AscendingGroupTimestampSortableGroups struct {
@@ -54,12 +43,4 @@ type AscendingGroupTimestampSortableGroups struct {
 
 func (self *AscendingGroupTimestampSortableGroups) Less(i, j int) bool {
 	return self.data[i].GetTimestamp() < self.data[j].GetTimestamp()
-}
-
-type DescendingGroupTimestampSortableGroups struct {
-	CommonSortableGroups
-}
-
-func (self *DescendingGroupTimestampSortableGroups) Less(i, j int) bool {
-	return self.data[i].GetTimestamp() > self.data[j].GetTimestamp()
 }
