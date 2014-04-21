@@ -418,17 +418,22 @@ func (self *QueryEngine) executeCountQueryWithGroupBy(query *parser.SelectQuery,
 		}
 		bucketedSeries = append(bucketedSeries, currentSeries)
 
+		flush := self.calculateSummariesForTable
+		if !self.query.GetGroupByClause().FillWithZero {
+			flush = self.runAggregatesForTable
+		}
+
 		for _, s := range bucketedSeries[:len(bucketedSeries)-1] {
 			if err := self.aggregateValuesForSeries(s); err != nil {
 				return err
 			}
-			self.calculateSummariesForTable(*s.Name)
+			flush(*s.Name)
 		}
 
 		last := bucketedSeries[len(bucketedSeries)-1]
 		bucket := self.getTimestampFromPoint(last.Points[0])
 		if b, ok := self.buckets[*series.Name]; ok && b != bucket {
-			self.calculateSummariesForTable(*last.Name)
+			flush(*last.Name)
 		}
 
 		self.buckets[*series.Name] = bucket
